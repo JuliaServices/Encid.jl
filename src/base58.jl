@@ -27,7 +27,9 @@ function encode(input::AbstractVector{UInt8})::String
     
     # Convert to base 58 string
     if num == 0
-        return "1" ^ zero_count
+        # explicit byte fill, not "1"^n: repeat(::String, ::Int) doesn't resolve
+        # under `juliac --trim`
+        return String(fill(UInt8('1'), zero_count))
     end
     
     result = ""
@@ -36,8 +38,8 @@ function encode(input::AbstractVector{UInt8})::String
         result = ALPHABET[remainder + 1] * result
     end
     
-    # Add leading zeros
-    return "1" ^ zero_count * result
+    # Add leading zeros (byte fill, not "1"^n — see above)
+    return String(fill(UInt8('1'), zero_count)) * result
 end
 
 function decode(input::String)::Vector{UInt8}
