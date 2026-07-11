@@ -172,11 +172,55 @@ struct UID{T, U <: Union{UID2, UID4, UID8, UID16, UID24, UID32, UID64}}
 end
 
 # Constructor that takes any number of arguments and encodes them.
-# `::Type{U} ... where U` (not a bare `::Type{<:Union{...}}` constraint): julia doesn't
-# specialize methods on unparameterized Type arguments, so every call funneled into one
-# instance where `uid_type` is a runtime DataType — type-unstable, and unresolvable
-# dynamic dispatch under `juliac --trim`.
-function UID(args...; uid_type::Type{U} = UID8) where {U <: Union{UID2, UID4, UID8, UID16, UID24, UID32, UID64}}
+# Both entry points forward to _uid_impl with the uid type as a positional where-param:
+# julia doesn't specialize methods on unparameterized Type arguments, and kwarg
+# NamedTuples type a Type value as a bare DataType — either way every call funneled
+# into one instance where `uid_type` is a runtime DataType: type-unstable, and
+# unresolvable dynamic dispatch under `juliac --trim`.
+UID(args...; uid_type::Type{U} = UID8) where {U <: Union{UID2, UID4, UID8, UID16, UID24, UID32, UID64}} =
+    _uid_impl(U, args...)
+
+# Constructor with specific UID type
+UID(uid_type::Type{U}, args...) where {U <: Union{UID2, UID4, UID8, UID16, UID24, UID32, UID64}} =
+    _uid_impl(U, args...)
+
+# Value-level fast path for the common "encode one string into a single-word uid"
+# case (e.g. prefixed ids). The generic path wraps the string as StringN{length(s)} —
+# a runtime type parameter — which makes the whole encode machinery runtime dispatch:
+# type-unstable, and unresolvable under `juliac --trim`. This produces bit-identical
+# results (verified against the generic path) using the length's value instead of its
+# type. Multi-word uid types fall through to the generic `args...` method.
+# NOTE: the result is tagged UID{String, U} (not UID{Tuple{StringN{N}}, U});
+# generation/printing is identical, but callers that decode by type should use the
+# generic constructor.
+function UID(uid_type::Type{U}, s::String) where {U <: Union{UID2, UID4, UID8, UID16}}
+    n = length(s)
+    total_bits = n * 8
+    available_bits = bitsize(U)
+    if total_bits > available_bits
+        throw(ArgumentError("Need $total_bits bits but only have $available_bits available in $U"))
+    end
+    # random init, then overwrite the low n*8 bits with the packed characters —
+    # the same layout encode_multi_word produces for a single StringN argument
+    w = _uid_word(U())
+    for i in 1:n
+        off = (i - 1) * 8
+        w = (w & ~(UInt128(0xff) << off)) | (UInt128(UInt8(s[i])) << off)
+    end
+    return UID{String, U}(_uid_from_word(U, w))
+end
+
+_uid_word(u::UID2) = UInt128(UInt16(u))
+_uid_word(u::UID4) = UInt128(UInt32(u))
+_uid_word(u::UID8) = UInt128(UInt64(u))
+_uid_word(u::UID16) = UInt128(u)
+
+_uid_from_word(::Type{UID2}, w::UInt128) = UID2(UInt16(w))
+_uid_from_word(::Type{UID4}, w::UInt128) = UID4(UInt32(w))
+_uid_from_word(::Type{UID8}, w::UInt128) = UID8(UInt64(w))
+_uid_from_word(::Type{UID16}, w::UInt128) = UID16(w)
+
+function _uid_impl(uid_type::Type{U}, args...) where {U <: Union{UID2, UID4, UID8, UID16, UID24, UID32, UID64}}
     if isempty(args)
         return UID{Nothing, uid_type}(uid_type())
     end
@@ -215,11 +259,6 @@ function UID(args...; uid_type::Type{U} = UID8) where {U <: Union{UID2, UID4, UI
     end
     
     return UID{Tuple{map(typeof, wrapped_args)...}, uid_type}(uid)
-end
-
-# Constructor with specific UID type (same specialization note as above)
-function UID(uid_type::Type{U}, args...) where {U <: Union{UID2, UID4, UID8, UID16, UID24, UID32, UID64}}
-    return UID(args...; uid_type=uid_type)
 end
 
 # String representation
