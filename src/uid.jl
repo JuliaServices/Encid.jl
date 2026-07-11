@@ -171,8 +171,12 @@ struct UID{T, U <: Union{UID2, UID4, UID8, UID16, UID24, UID32, UID64}}
     uid::U
 end
 
-# Constructor that takes any number of arguments and encodes them
-function UID(args...; uid_type::Type{<:Union{UID2, UID4, UID8, UID16, UID24, UID32, UID64}} = UID8)
+# Constructor that takes any number of arguments and encodes them.
+# `::Type{U} ... where U` (not a bare `::Type{<:Union{...}}` constraint): julia doesn't
+# specialize methods on unparameterized Type arguments, so every call funneled into one
+# instance where `uid_type` is a runtime DataType — type-unstable, and unresolvable
+# dynamic dispatch under `juliac --trim`.
+function UID(args...; uid_type::Type{U} = UID8) where {U <: Union{UID2, UID4, UID8, UID16, UID24, UID32, UID64}}
     if isempty(args)
         return UID{Nothing, uid_type}(uid_type())
     end
@@ -213,8 +217,8 @@ function UID(args...; uid_type::Type{<:Union{UID2, UID4, UID8, UID16, UID24, UID
     return UID{Tuple{map(typeof, wrapped_args)...}, uid_type}(uid)
 end
 
-# Constructor with specific UID type
-function UID(uid_type::Type{<:Union{UID2, UID4, UID8, UID16, UID24, UID32, UID64}}, args...)
+# Constructor with specific UID type (same specialization note as above)
+function UID(uid_type::Type{U}, args...) where {U <: Union{UID2, UID4, UID8, UID16, UID24, UID32, UID64}}
     return UID(args...; uid_type=uid_type)
 end
 
