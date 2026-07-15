@@ -28,3 +28,5 @@ end
     encoded = Encid.Base58.encode(bytes)
     @test Encid.Base58.decode(encoded) == bytes
 end
+
+include("trim_compile_tests.jl")
