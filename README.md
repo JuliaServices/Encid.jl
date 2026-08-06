@@ -54,7 +54,13 @@ Plain random identifiers work too, at any size:
 r = UID8()                      # random 64-bit identifier
 s = string(r)                   # e.g. "4jyPvXqoLXYN"
 parse(UID8, s) == r             # true
+tryparse(UID8, "not-valid!")    # nothing (non-throwing variant)
+UID8"Ahg1opVcGX"                # string-literal macro; the show form is pasteable
 ```
+
+Identifiers are opaque values, not numbers: they support `==`, `isless`/`sort`,
+`hash`, and string round-trips, but no arithmetic. Interpolating one into a string
+(`"id: $r"`) produces the bare Base58 form, same as `string(r)`.
 
 ## Helpers
 

@@ -1,12 +1,14 @@
 # Primitive UID types with different bit sizes.
 # The name suffix is the size in bytes: UID2 = 2 bytes = 16 bits, ..., UID64 = 64 bytes = 512 bits.
-primitive type UID2 <: Integer 16 end
-primitive type UID4 <: Integer 32 end
-primitive type UID8 <: Integer 64 end
-primitive type UID16 <: Integer 128 end
-primitive type UID24 <: Integer 192 end
-primitive type UID32 <: Integer 256 end
-primitive type UID64 <: Integer 512 end
+# Deliberately NOT <: Integer: these are opaque identifiers, not numbers — they support
+# equality, ordering, hashing, and string round-trips, but no arithmetic.
+primitive type UID2 16 end
+primitive type UID4 32 end
+primitive type UID8 64 end
+primitive type UID16 128 end
+primitive type UID24 192 end
+primitive type UID32 256 end
+primitive type UID64 512 end
 
 """
     UID2, UID4, UID8, UID16, UID24, UID32, UID64
@@ -14,9 +16,13 @@ primitive type UID64 <: Integer 512 end
 Primitive identifier types of 16, 32, 64, 128, 192, 256, and 512 bits respectively
 (the name suffix is the size in bytes). Calling a type with no arguments produces a
 random identifier, e.g. `UID8()`. Use [`string`](@ref Base.string) to render one as a
-Base58 string and [`parse`](@ref Base.parse) to read it back.
+Base58 string and [`parse`](@ref Base.parse) / [`tryparse`](@ref Base.tryparse) to read
+it back. Identifiers of the same type support `==`, `isless`/`sort`, and `hash`; they
+are not numbers and support no arithmetic.
 """
 UID2, UID4, UID8, UID16, UID24, UID32, UID64
+
+const PrimitiveUID = Union{UID2, UID4, UID8, UID16, UID24, UID32, UID64}
 
 # Constructor functions for each primitive type: random identifiers
 UID2() = reinterpret(UID2, rand(UInt16))
@@ -68,6 +74,15 @@ Base.hash(x::UID16, h::UInt) = hash(UInt128(x), h)
 Base.hash(x::UID24, h::UInt) = hash(Tuple(x), h)
 Base.hash(x::UID32, h::UInt) = hash(Tuple(x), h)
 Base.hash(x::UID64, h::UInt) = hash(Tuple(x), h)
+
+# Ordering: compare as unsigned values, most-significant word first (enables sort)
+Base.isless(a::UID2, b::UID2) = isless(UInt16(a), UInt16(b))
+Base.isless(a::UID4, b::UID4) = isless(UInt32(a), UInt32(b))
+Base.isless(a::UID8, b::UID8) = isless(UInt64(a), UInt64(b))
+Base.isless(a::UID16, b::UID16) = isless(UInt128(a), UInt128(b))
+Base.isless(a::UID24, b::UID24) = isless(reverse(Tuple(a)), reverse(Tuple(b)))
+Base.isless(a::UID32, b::UID32) = isless(reverse(Tuple(a)), reverse(Tuple(b)))
+Base.isless(a::UID64, b::UID64) = isless(reverse(Tuple(a)), reverse(Tuple(b)))
 
 """
     string(x::UID2)  ->  String
@@ -154,6 +169,39 @@ function Base.parse(::Type{UID64}, s::AbstractString)
     words = reinterpret(UInt128, bytes)
     return UID64((words[1], words[2], words[3], words[4]))
 end
+
+"""
+    tryparse(::Type{U}, s::AbstractString)  ->  Union{U, Nothing}
+
+Like `parse(U, s)` for a primitive UID type, but returns `nothing` instead of throwing
+when `s` is not a valid Base58 encoding of the right length.
+"""
+function Base.tryparse(::Type{U}, s::AbstractString) where {U <: PrimitiveUID}
+    try
+        return parse(U, s)
+    catch e
+        e isa ArgumentError && return nothing
+        rethrow()
+    end
+end
+
+"""
+    UID2"...", UID4"...", UID8"...", UID16"...", UID24"...", UID32"...", UID64"..."
+
+String-literal macros that parse a Base58 identifier at macro-expansion time, so the
+`show` form of a primitive UID (e.g. `UID8"Ahg1opVcGX"`) is valid, pasteable syntax.
+"""
+macro UID2_str(s); parse(UID2, s); end
+macro UID4_str(s); parse(UID4, s); end
+macro UID8_str(s); parse(UID8, s); end
+macro UID16_str(s); parse(UID16, s); end
+macro UID24_str(s); parse(UID24, s); end
+macro UID32_str(s); parse(UID32, s); end
+macro UID64_str(s); parse(UID64, s); end
+
+# print/interpolation renders the bare Base58 string (matching string(x)); show renders
+# the pasteable UIDn"..." literal form
+Base.print(io::IO, x::PrimitiveUID) = print(io, string(x))
 
 # Show methods
 Base.show(io::IO, x::UID2) = print(io, "UID2\"$(string(x))\"")

@@ -80,7 +80,8 @@ plain `String`/`Symbol` (up to 16 bytes, NUL-padded).
 
 The value form is an exact measurement for a specific value: the position of the
 highest set bit for non-negative integers (`bits_required(0) == 1`), the full type
-width for negative integers, and the type width for other supported values.
+width for negative integers, floats, chars, and enums, and the byte length × 8 for
+strings and symbols.
 """
 function bits_required(x::Integer)
     if x < 0
@@ -120,6 +121,13 @@ end
 
 bits_required(x::Char) = 32
 bits_required(::Type{Char}) = 32
+
+# Catch-alls with a helpful error for unsupported argument types
+const _SUPPORTED_TYPES_MSG = "supported types are integers (≤ 128 bits), IEEE floats, \
+Char, String, Symbol, enums, and StringN{N}/SymbolN{N}; extend Encid.bits_required, \
+Encid.encode_value, and Encid.decode_value to encode custom types"
+bits_required(x) = throw(ArgumentError("cannot encode values of type $(typeof(x)): $_SUPPORTED_TYPES_MSG"))
+bits_required(::Type{T}) where {T} = throw(ArgumentError("cannot encode values of type $T: $_SUPPORTED_TYPES_MSG"))
 
 """
     encode_value(x, bits::Int)  ->  UInt128

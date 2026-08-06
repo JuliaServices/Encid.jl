@@ -12,6 +12,7 @@ module Encid
 using Random
 
 export UID, UID2, UID4, UID8, UID16, UID24, UID32, UID64
+export @UID2_str, @UID4_str, @UID8_str, @UID16_str, @UID24_str, @UID32_str, @UID64_str
 export encode_value, decode_value, bits_required, bitsize, StringN, SymbolN
 
 include("base58.jl")

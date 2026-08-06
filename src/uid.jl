@@ -7,8 +7,6 @@ wrap_string(x) = x  # Identity for non-strings
 wrap_symbol(s::Symbol) = SymbolN{ncodeunits(String(s))}(s)
 wrap_symbol(x) = x  # Identity for non-symbols
 
-const PrimitiveUID = Union{UID2, UID4, UID8, UID16, UID24, UID32, UID64}
-
 # Extract a uid's words as UInt128s (least-significant word first) with their bit sizes
 function _uid_words(uid_type::Type{U}, uid) where {U <: PrimitiveUID}
     if uid_type == UID2
@@ -269,6 +267,20 @@ full concrete `UID{T, U}` type must be supplied — typically as `typeof(uid)` f
 """
 Base.parse(::Type{UID{T, U}}, s::AbstractString) where {T, U <: PrimitiveUID} =
     UID{T, U}(parse(U, s))
+
+"""
+    tryparse(::Type{UID{T, U}}, s::AbstractString)  ->  Union{UID{T, U}, Nothing}
+
+Like `parse(UID{T, U}, s)`, but returns `nothing` instead of throwing when `s` is not
+a valid Base58 encoding of the right length.
+"""
+function Base.tryparse(::Type{UID{T, U}}, s::AbstractString) where {T, U <: PrimitiveUID}
+    uid = tryparse(U, s)
+    return uid === nothing ? nothing : UID{T, U}(uid)
+end
+
+# print/interpolation renders the bare Base58 string (matching string(uid))
+Base.print(io::IO, uid::UID) = print(io, string(uid))
 
 # Show method
 function Base.show(io::IO, uid::UID)

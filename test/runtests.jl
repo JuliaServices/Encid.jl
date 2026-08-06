@@ -135,6 +135,10 @@ end
     @test bits_required(Temp) == 8
     @test bits_required(StringN{5}) == 40
     @test bits_required(SymbolN{3}) == 24
+    # unsupported types get a descriptive error, not a MethodError
+    @test_throws ArgumentError bits_required(Vector{Int})
+    @test_throws ArgumentError bits_required([1, 2])
+    @test_throws ArgumentError UID([1, 2])
 end
 
 @testset "StringN and SymbolN" begin
@@ -250,9 +254,28 @@ end
     # parse validation
     @test_throws ArgumentError parse(UID8, "!!!not-base58!!!")
     @test_throws ArgumentError parse(UID8, string(UID16()))  # wrong byte count
+
+    # tryparse: nothing on bad input, value on good input
+    @test tryparse(UID8, "!!!not-base58!!!") === nothing
+    @test tryparse(UID8, string(UID16())) === nothing
+    r8 = UID8()
+    @test tryparse(UID8, string(r8)) === r8
+    tu = UID(7, :ab; uid_type = UID16)
+    @test tryparse(typeof(tu), string(tu)) == tu
+    @test tryparse(typeof(tu), "***") === nothing
+
+    # string macros: the show form of a primitive uid is pasteable syntax
+    @test UID8"Ahg1opVcGX" === UID8(UInt64(1))
+    @test parse(UID2, string(UID2"11")) === UID2"11"
+
+    # print/interpolation matches string(); show is the pasteable literal form
+    @test "id: $r8" == "id: $(string(r8))"
+    @test sprint(show, r8) == "UID8\"$(string(r8))\""
+    @test "id: $tu" == "id: $(string(tu))"
+    @test sprint(print, r8) == string(r8)
 end
 
-@testset "Equality and hashing" begin
+@testset "Equality, ordering, and hashing" begin
     u = UID(7, :ab; uid_type = UID16)
     same = parse(typeof(u), string(u))
     @test u == same
@@ -260,6 +283,19 @@ end
     @test isequal(u, same)
     other = UID(8, :ab; uid_type = UID16)
     @test u != other
+
+    # cross-type and cross-domain == is false, never an error
+    @test UID8(UInt64(1)) != UID2(0x0001)
+    @test UID8(UInt64(1)) != UInt64(1)
+    @test UID8(UInt64(1)) != 1
+
+    # ordering compares as unsigned values, most-significant word first
+    @test UID8(UInt64(1)) < UID8(UInt64(2))
+    @test UID24((UInt128(9), UInt64(0))) < UID24((UInt128(0), UInt64(1)))
+    @test sort([UID8(UInt64(3)), UID8(UInt64(1)), UID8(UInt64(2))]) ==
+          [UID8(UInt64(1)), UID8(UInt64(2)), UID8(UInt64(3))]
+    xs = sort([UID32() for _ in 1:10])
+    @test issorted(xs)
 
     # same bits under different type params compare unequal
     @test UID(UID8, "EVT") != UID("EVT"; uid_type = UID8)
