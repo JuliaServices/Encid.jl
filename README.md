@@ -76,6 +76,8 @@ Identifiers are opaque values, not numbers: they support `==`, `isless`/`sort`,
   ordering and types consistent.
 - Strings and symbols are encoded byte-for-byte (UTF-8), one byte per codeunit;
   `StringN{N}`/`SymbolN{N}` sizes are byte counts.
+- Each individual value must fit in 128 bits, so strings and symbols may be at most
+  16 bytes each; split longer strings into multiple arguments.
 - `UID(uid_type, s::String)` for single-word uid types (`UID2`–`UID16`) is a
   value-level fast path returning `UID{String, U}`: generation and printing are
   identical to the generic path, but the value cannot be decoded back out by index

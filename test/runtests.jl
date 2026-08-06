@@ -99,6 +99,18 @@ end
     # too large for the uid type
     @test_throws ArgumentError UID("123456789")            # 72 bits > 64
     @test_throws ArgumentError UID(UID2, 1, 2)             # 128 bits > 16
+
+    # 16 bytes is the per-value maximum (128 bits); longer values error instead of
+    # silently truncating, even when the uid type has room
+    s16 = "abcdefghijklmnop"
+    @test UID(s16; uid_type = UID16)[1] == s16
+    @test UID(s16, s16; uid_type = UID32) |> Tuple == (s16, s16)
+    @test_throws ArgumentError UID(s16 * "q"; uid_type = UID32)
+    @test_throws ArgumentError UID(Symbol(s16 * "q"); uid_type = UID32)
+    @test_throws ArgumentError StringN{17}(s16 * "q")
+    @test_throws ArgumentError SymbolN{17}(Symbol(s16 * "q"))
+    @test_throws ArgumentError decode_value(StringN{17}, UInt128(0), 136)
+    @test_throws ArgumentError decode_value(SymbolN{17}, UInt128(0), 136)
 end
 
 @testset "Enum round trips" begin
@@ -296,6 +308,8 @@ end
           [UID8(UInt64(1)), UID8(UInt64(2)), UID8(UInt64(3))]
     xs = sort([UID32() for _ in 1:10])
     @test issorted(xs)
+    ws = sort([UID(i; uid_type = UID16) for i in (3, 1, 2)])
+    @test issorted(ws)
 
     # same bits under different type params compare unequal
     @test UID(UID8, "EVT") != UID("EVT"; uid_type = UID8)

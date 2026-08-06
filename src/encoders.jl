@@ -10,10 +10,16 @@ _low_mask(bits::Int) = bits >= 128 ? typemax(UInt128) : (UInt128(1) << bits) - U
 Fixed-size string wrapper enforcing that `s` occupies exactly `N` bytes (codeunits).
 Used by [`UID`](@ref) to record a string's byte length in the type domain so it can be
 decoded later. Multi-byte UTF-8 strings are supported; `N` counts bytes, not characters.
+
+`N` may be at most 16: each encoded value must fit in 128 bits. Split longer strings
+into multiple values.
 """
 struct StringN{N} <: AbstractString
     value::String
     function StringN{N}(s::String) where {N}
+        if N > 16
+            throw(ArgumentError("StringN{$N} exceeds the 16-byte (128-bit) limit per encoded value; split longer strings into multiple values"))
+        end
         if ncodeunits(s) != N
             throw(ArgumentError("StringN{$N} must have $N bytes (codeunits), got $(ncodeunits(s))"))
         end
@@ -43,10 +49,15 @@ Base.:(==)(a::StringN, b::String) = a.value == b
 Fixed-size symbol wrapper enforcing that `s`'s name occupies exactly `N` bytes
 (codeunits). Used by [`UID`](@ref) to record a symbol's byte length in the type domain
 so it can be decoded later.
+
+`N` may be at most 16: each encoded value must fit in 128 bits.
 """
 struct SymbolN{N}
     value::Symbol
     function SymbolN{N}(s::Symbol) where {N}
+        if N > 16
+            throw(ArgumentError("SymbolN{$N} exceeds the 16-byte (128-bit) limit per encoded value; symbol names may be at most 16 bytes"))
+        end
         nb = ncodeunits(String(s))
         if nb != N
             throw(ArgumentError("SymbolN{$N} must have $N bytes (codeunits), got $nb"))
@@ -283,6 +294,9 @@ function encode_value(x::StringN{N}, bits::Int) where {N}
 end
 
 function decode_value(::Type{StringN{N}}, encoded::UInt128, bits::Int) where {N}
+    if N > 16
+        throw(ArgumentError("StringN{$N} exceeds the 16-byte (128-bit) limit per encoded value"))
+    end
     if bits != N * 8
         throw(ArgumentError("bits for StringN{$N} must be N*8, got $bits"))
     end
@@ -306,6 +320,9 @@ function encode_value(x::SymbolN{N}, bits::Int) where {N}
 end
 
 function decode_value(::Type{SymbolN{N}}, encoded::UInt128, bits::Int) where {N}
+    if N > 16
+        throw(ArgumentError("SymbolN{$N} exceeds the 16-byte (128-bit) limit per encoded value"))
+    end
     if bits != N * 8
         throw(ArgumentError("bits for SymbolN{$N} must be N*8, got $bits"))
     end

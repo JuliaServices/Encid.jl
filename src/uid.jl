@@ -157,7 +157,9 @@ end
 Generate an identifier of `uid_type` (one of `UID2`, `UID4`, `UID8`, `UID16`, `UID24`,
 `UID32`, `UID64`) with `args` encoded into its low bits; any remaining bits are filled
 with random bits. Supported argument types: integers, IEEE floats, `Char`, `String`,
-`Symbol`, enums, and [`StringN`](@ref)/[`SymbolN`](@ref).
+`Symbol`, enums, and [`StringN`](@ref)/[`SymbolN`](@ref). Each individual value must
+fit in 128 bits — strings and symbols may be at most 16 bytes; split longer strings
+into multiple arguments.
 
 With no `args`, returns a fully random identifier.
 
@@ -347,6 +349,9 @@ function Base.:(==)(a::UID, b::UID)
     end
     return a.uid == b.uid
 end
+
+# Ordering: same-type UIDs sort by their underlying identifier bits
+Base.isless(a::UID{T, U}, b::UID{T, U}) where {T, U} = isless(a.uid, b.uid)
 
 # Hash
 function Base.hash(uid::UID, h::UInt)
