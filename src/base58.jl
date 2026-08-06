@@ -42,11 +42,21 @@ function encode(input::AbstractVector{UInt8})::String
     return String(fill(UInt8('1'), zero_count)) * result
 end
 
-function decode(input::String)::Vector{UInt8}
+function decode(input::AbstractString)::Vector{UInt8}
     if isempty(input)
         return UInt8[]
     end
-    
+
+    # Count leading '1' characters (each represents a leading zero byte)
+    zero_count = 0
+    for c in input
+        if c == '1'
+            zero_count += 1
+        else
+            break
+        end
+    end
+
     # Convert from base 58
     num = BigInt(0)
     for c in input
@@ -56,28 +66,18 @@ function decode(input::String)::Vector{UInt8}
         end
         num = num * 58 + digit
     end
-    
+
     # Convert to bytes
     if num == 0
-        return UInt8[]
+        return zeros(UInt8, zero_count)
     end
-    
+
     bytes = UInt8[]
     while num > 0
         num, remainder = divrem(num, 256)
         pushfirst!(bytes, UInt8(remainder))
     end
-    
-    # Add leading zeros
-    zero_count = 0
-    for c in input
-        if c == '1'
-            zero_count += 1
-        else
-            break
-        end
-    end
-    
+
     return [zeros(UInt8, zero_count); bytes]
 end
 
