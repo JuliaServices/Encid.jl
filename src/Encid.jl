@@ -1,3 +1,12 @@
+"""
+    Encid
+
+Generate compact, fixed-width identifiers that can encode a small set of values while
+preserving random bits. Pick a size ([`UID2`](@ref) through [`UID64`](@ref), 16–512
+bits), pack integers, floats, chars, strings, symbols, and enums into the low bits with
+[`UID`](@ref), and decode them back out later by index or via `Tuple(uid)`. Identifiers
+render as Base58 strings with `string(uid)` and round-trip with `parse`.
+"""
 module Encid
 
 using Random
