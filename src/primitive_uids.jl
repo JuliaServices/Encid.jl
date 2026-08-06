@@ -114,14 +114,6 @@ function Base.string(x::UID64)
     return Base58.encode(bytes)
 end
 
-"""
-    parse(::Type{U}, s::AbstractString)  ->  U
-
-Parse a Base58 string produced by `string(::U)` back into the primitive UID type `U`
-(one of `UID2`, `UID4`, `UID8`, `UID16`, `UID24`, `UID32`, `UID64`). Throws an
-`ArgumentError` if `s` contains invalid Base58 characters or decodes to the wrong
-number of bytes.
-"""
 function _uid_parse_bytes(::Type{U}, s::AbstractString) where {U}
     bytes = Base58.decode(s)
     nbytes = bitsize(U) ÷ 8
@@ -131,6 +123,14 @@ function _uid_parse_bytes(::Type{U}, s::AbstractString) where {U}
     return bytes
 end
 
+"""
+    parse(::Type{U}, s::AbstractString)  ->  U
+
+Parse a Base58 string produced by `string(::U)` back into the primitive UID type `U`
+(one of `UID2`, `UID4`, `UID8`, `UID16`, `UID24`, `UID32`, `UID64`). Throws an
+`ArgumentError` if `s` contains invalid Base58 characters or decodes to the wrong
+number of bytes.
+"""
 Base.parse(::Type{UID2}, s::AbstractString) = UID2(reinterpret(UInt16, _uid_parse_bytes(UID2, s))[1])
 Base.parse(::Type{UID4}, s::AbstractString) = UID4(reinterpret(UInt32, _uid_parse_bytes(UID4, s))[1])
 Base.parse(::Type{UID8}, s::AbstractString) = UID8(reinterpret(UInt64, _uid_parse_bytes(UID8, s))[1])

@@ -63,9 +63,10 @@ Base.show(io::IO, s::SymbolN{N}) where {N} = print(io, "SymbolN{$N}(:$(s.value))
 Base.iterate(s::SymbolN) = iterate(String(s))
 Base.iterate(s::SymbolN, state::Integer) = iterate(String(s), state)
 
-# Equality
+# Equality (symmetric; StringN gets its Symbol-free analog via generic AbstractString ==)
 Base.:(==)(a::SymbolN{N}, b::SymbolN{N}) where {N} = a.value == b.value
 Base.:(==)(a::SymbolN, b::Symbol) = a.value == b
+Base.:(==)(a::Symbol, b::SymbolN) = b == a
 
 """
     bits_required(x)  ->  Int

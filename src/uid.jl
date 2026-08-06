@@ -319,12 +319,13 @@ function Base.iterate(uid::UID, state::Integer = 0)
     return (uid[state + 1], state + 1)
 end
 
-# Convert to tuple
-function Base.Tuple(uid::UID{T}) where T
+# Convert to tuple (decodes all values in a single pass)
+function Base.Tuple(uid::UID{T, U}) where {T, U}
     if !(T <: Tuple)
         return ()
     end
-    return Tuple(uid[i] for i in 1:length(uid))
+    decoded_values = decode_multi_word(uid.uid, T.parameters, U)
+    return Tuple(map(unwrap_value, decoded_values))
 end
 
 # Equality

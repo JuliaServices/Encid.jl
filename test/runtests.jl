@@ -156,6 +156,7 @@ end
 
     y = SymbolN{2}(:ab)
     @test y == :ab
+    @test :ab == y                           # symmetric
     @test Symbol(y) === :ab
     @test String(y) == "ab"
     @test y == SymbolN{2}(:ab)
