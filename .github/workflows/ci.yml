@@ -11,6 +11,10 @@ jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      actions: write
+      contents: read
+      id-token: write
     continue-on-error: ${{ matrix.version == 'pre' }}
     strategy:
       fail-fast: false
@@ -41,4 +45,4 @@ jobs:
       - uses: codecov/codecov-action@v5
         with:
           files: lcov.info
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
