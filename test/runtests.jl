@@ -207,6 +207,12 @@ end
     @test_throws ArgumentError encode_value(1, 129)
     @test_throws ArgumentError encode_value(256, 8)          # too large
     @test_throws ArgumentError encode_value(-129, 8)         # too small
+    # a BigInt is range-checked at every width, 128 bits included
+    @test_throws ArgumentError encode_value(big(2)^128, 128)
+    @test_throws ArgumentError encode_value(-big(2)^127 - 1, 128)
+    @test_throws ArgumentError encode_value(big(2)^130, 64)
+    @test encode_value(-big(2)^127, 128) == encode_value(typemin(Int128), 128)
+    @test encode_value(big(2)^128 - 1, 128) == typemax(UInt128)
     @test_throws ArgumentError encode_value(1.25, 32)        # Float64 is 64 bits
     @test_throws ArgumentError encode_value(1.5f0, 64)       # Float32 is 32 bits
     @test_throws ArgumentError encode_value('λ', 8)          # doesn't fit

@@ -160,12 +160,12 @@ function encode_value(x::Integer, bits::Int)
 
     mask = _low_mask(bits)
     if x >= 0
-        if bits < 128 && !(UInt128(x) <= mask)
+        if !(x <= mask)
             throw(ArgumentError("Value $x too large for $bits bits"))
         end
     else
         # smallest representable two's-complement value in `bits` bits is -2^(bits-1)
-        if bits < 128 && !(Int128(x) >= -(Int128(1) << (bits - 1)))
+        if !(x >= typemin(Int128) >> (128 - bits))
             throw(ArgumentError("Value $x too small for $bits bits"))
         end
     end
