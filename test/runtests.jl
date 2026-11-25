@@ -151,6 +151,9 @@ end
     @test_throws ArgumentError bits_required(Vector{Int})
     @test_throws ArgumentError bits_required([1, 2])
     @test_throws ArgumentError UID([1, 2])
+    # BigInt has no fixed width to encode into
+    @test_throws ArgumentError bits_required(BigInt)
+    @test_throws ArgumentError UID(big(-1); uid_type = UID16)
 end
 
 @testset "StringN and SymbolN" begin

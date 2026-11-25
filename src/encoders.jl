@@ -105,6 +105,8 @@ function bits_required(x::Integer)
 end
 
 function bits_required(::Type{T}) where {T<:Integer}
+    # A type's byte size is its integer width only for fixed-width integers; `BigInt` has none.
+    isbitstype(T) || throw(ArgumentError("cannot encode values of type $T: $_SUPPORTED_TYPES_MSG"))
     return 8 * sizeof(T)
 end
 
